@@ -133,7 +133,7 @@ class BiLSTM_CRF(nn.Module):
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
         self.vocab_size = vocab_size
-        #tag_to_ix 是输出
+        #tag_to_ix 是标签空间
         self.tag_to_ix = tag_to_ix
         self.tagset_size = len(tag_to_ix)
 
