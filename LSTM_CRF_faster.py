@@ -207,21 +207,7 @@ if __name__== '__main__':
             
             sentence_loca = []
             test_data = []
-            #将txt文档分割成句子
-            for i in range(len(txtdata)):
-                if not txtdata[i] == ' ':
-                    if i == 0:
-                        sentence_start = 0
-                    elif txtdata[i-1] == ' ' or txtdata[i-1] == '。':
-                        sentence_start = i
-                    elif txtdata[i] == '。':
-                        sentence_end = i+1
-                        sentence_loca.append([sentence_start,sentence_end])
-                        test_data.append(txtdata[sentence_start:sentence_end])
-                    elif i != len(txtdata)-1 and txtdata[i+1] ==' ':
-                        sentence_end = i+1
-                        sentence_loca.append([sentence_start,sentence_end])
-                        test_data.append(txtdata[sentence_start:sentence_end])
+            test_data,sentence_loca = ProcessDATA.split_txt(txtdata)
             #print(test_data)
             #对每一个句子循环
             cont = 0

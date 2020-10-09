@@ -3,7 +3,7 @@ import pandas as pd
 import os
 
 def get_train_data(window_size,batch):
-    fildir = os.getcwd()+'/data/train/'
+    fildir = os.path.join(os.getcwd(),'data','train')
     filenames = os.listdir(fildir)
     filenames_txt = []
     filenames_ann = []
@@ -22,39 +22,42 @@ def get_train_data(window_size,batch):
         train_data = []
         for filenum in range(0+times*interval,window_size+times*interval):
             charlis = []
-            with open(fildir+filenames_txt[filenum],'r',encoding='utf-8') as f:
+            with open(os.path.join(fildir,filenames_txt[filenum]),'r',encoding='utf-8') as f:
                 txtdata = f.read()
                 txtdata = txtdata.replace('\u3000',' ')
-                for i in txtdata:
-                    charlis.append(i)
-
-            lbt = pd.DataFrame(data=charlis,columns=['charlis'])
-            lbt['feature'] = 'O'
 
 
             index = []
-            rowdata = []
-            with open(fildir+filenames_ann[filenum],'r',encoding='utf-8') as f:
+            type_data = []
+            type_location = []
+            with open(os.path.join(fildir,filenames_ann[filenum]),'r',encoding='utf-8') as f:
                 for line in f:
                     line = line.split()
                     index.append(line[0])
-                    rowdata.append(line[1:])
+                    type_data.append(line[1])
+                    type_location.append(([int(line[2]),int(line[3])))
 
-            label = pd.DataFrame(data=rowdata,index=index,columns=['Type','LocStart','LocEnd','Value'])
-            label[['LocStart','LocEnd']] = label[['LocStart','LocEnd']].astype(int)
-            label['LocEnd'] = label['LocEnd']-1
+            #全文件标注
+            tag_txt = ['O'] * len(txtdata)
+            for index_num in range(len(type_data)):
+                lenth = type_location[index_num][1] - type_location[index_num][0]
+                if lenth == 1:
+                    tag_txt[type_location[index_num][0]] = type_data[index_num] + '_S'
+                elif lenth == 2:
+                    tag_txt[type_location[index_num][0]] = type_data[index_num]+'_B'
+                    tag_txt[type_location[index_num][1]-1] = type_data[index_num]+'_E'
+                else:
+                    tag_txt[type_location[index_num][0]] = type_data[index_num]+'_B'
+                    tag_txt[type_location[index_num][0]+1:type_location[index_num][1]] = [type_data[index_num]+'_I']*(lenth-2)
+                    tag_txt[type_location[index_num][1]-1] = type_data[index_num]+'_E'
 
-            feature = ['O' for i in range(len(lbt.index))]
-            len(lbt.index)
-            len(feature)
-            def labelfuc(df):
-                lbt.at[df['LocStart'],'feature'] =  df['Type']+'_B'
-                if df['LocEnd']-df['LocStart'] != 1:
-                    lbt.loc[df['LocStart']+1:df['LocEnd']-1,'feature'] = [df['Type']+'_I' for i in range(df['LocEnd']-df['LocStart']-1)]
-                lbt.at[df['LocEnd'],'feature'] =  df['Type']+'_E'
 
-            label.apply(labelfuc,axis=1)
 
+            sentence_data,sentence_cutnum = split_txt(txtdata)
+            tag_sentence = []
+            for cutnum in sentence_cutnum:
+               tag_sentence.append(tag_txt[cutnum[0]:cutnum[1]]) 
+ 
             tupl = ([],[])
             for index,row in lbt.iterrows():
 
@@ -73,3 +76,24 @@ def get_train_data(window_size,batch):
                     tupl[1].append(row[1])
 
         yield  train_data
+
+def split_txt(txtdata):
+    sentence_cutnum = []
+    split_data = []
+    txtdata.replace('\u3000',' ')
+    for i in range(len(txtdata)):
+        if not txtdata[i] == ' ':
+            if i == 0:
+                sentence_start = 0
+            elif txtdata[i-1] == ' ' or txtdata[i-1] == '。':
+                sentence_start = i
+            elif txtdata[i] == '。' or i == len(txtdata):
+                sentence_end = i+1
+                sentence_cutnum.append([sentence_start,sentence_end])
+                split_data.append(txtdata[sentence_start:sentence_end])
+            elif txtdata[i+1] ==' ':
+                sentence_end = i+1
+                sentence_cutnum.append([sentence_start,sentence_end])
+                split_data.append(txtdata[sentence_start:sentence_end])
+    #返回列表1 分好的文本 列表2 开头和结尾的切片(位置需要结尾数-1)
+    return split_data,sentence_cutnum
