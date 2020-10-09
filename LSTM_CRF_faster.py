@@ -1,10 +1,13 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import ProcessDATA
+import os
+from tag2num import tag_to_ix
+from num2tag import ix_to_tag
+
 START_TAG = "<START>"
 STOP_TAG = "<STOP>"
-EMBEDDING_DIM = 5
-HIDDEN_DIM = 4
 # torch.manual_seed(1)
 
 def prepare_sequence(seq, to_ix):
@@ -139,58 +142,117 @@ class BiLSTM_CRF(nn.Module):
 if __name__== '__main__':
     START_TAG = "<START>"
     STOP_TAG = "<STOP>"
-    EMBEDDING_DIM = 300
-    HIDDEN_DIM = 256
-
-    # Make up some training data
-    training_data = [(
-        "the wall street journal reported today that apple corporation made money".split(),
-        "B I I I O O O B I O O".split()
-    ), (
-        "georgia tech is a university in georgia".split(),
-        "B I O O O O B".split()
-    )]
+    EMBEDDING_DIM = 30#300
+    HIDDEN_DIM = 26#256
+    train_set_times = 5
+    window_size = 200
 
     word_to_ix = {}
-    for sentence, tags in training_data:
-        for word in sentence:
-            if word not in word_to_ix:
-                word_to_ix[word] = len(word_to_ix)
-
-    tag_to_ix = {"B": 0, "I": 1, "O": 2, START_TAG: 3, STOP_TAG: 4}
-
-    model = BiLSTM_CRF(len(word_to_ix), tag_to_ix, EMBEDDING_DIM, HIDDEN_DIM)
-    optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)
-
-    # Check predictions before training
-    with torch.no_grad():
-        precheck_sent = prepare_sequence(training_data[0][0], word_to_ix)
-        precheck_tags = torch.tensor([tag_to_ix[t] for t in training_data[0][1]], dtype=torch.long)
-        print(model(precheck_sent))
-
-    # Make sure prepare_sequence from earlier in the LSTM section is loaded
-    for epoch in range(
-            300):  # again, normally you would NOT do 300 epochs, it is toy data
+    # Make up some training data
+    data_generate = ProcessDATA.get_train_data(window_size,train_set_times)
+    for times in range(train_set_times):
+        print('train_set',times+1)
+        training_data = next(data_generate)
         for sentence, tags in training_data:
-            # Step 1. Remember that Pytorch accumulates gradients.
-            # We need to clear them out before each instance
-            model.zero_grad()
+            for word in sentence:
+                if word not in word_to_ix:
+                    word_to_ix[word] = len(word_to_ix)
+            for tag in tags:
+                if tag not in tag_to_ix:
+                    tag_to_ix[tag] = len(tag_to_ix)
 
-            # Step 2. Get our inputs ready for the network, that is,
-            # turn them into Tensors of word indices.
-            sentence_in = prepare_sequence(sentence, word_to_ix)
-            targets = torch.tensor([tag_to_ix[t] for t in tags], dtype=torch.long)
+        model = BiLSTM_CRF(len(word_to_ix), tag_to_ix, EMBEDDING_DIM, HIDDEN_DIM)
+        optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)
 
-            # Step 3. Run our forward pass.
-            loss = model.neg_log_likelihood(sentence_in, targets)
+        # Check predictions before training
+        with torch.no_grad():
+            precheck_sent = prepare_sequence(training_data[0][0], word_to_ix)
+            precheck_tags = torch.tensor([tag_to_ix[t] for t in training_data[0][1]], dtype=torch.long)
+            print(model(precheck_sent))
 
-            # Step 4. Compute the loss, gradients, and update the parameters by
-            # calling optimizer.step()
-            loss.backward()
-            optimizer.step()
+        # Make sure prepare_sequence from earlier in the LSTM section is loaded
+        for epoch in range(
+                3):  # again, normally you would NOT do 300 epochs, it is toy data
+            print('epoch',epoch)
+            for sentence, tags in training_data:
+                # Step 1. Remember that Pytorch accumulates gradients.
+                # We need to clear them out before each instance
+                model.zero_grad()
+
+                # Step 2. Get our inputs ready for the network, that is,
+                # turn them into Tensors of word indices.
+                sentence_in = prepare_sequence(sentence, word_to_ix)
+                targets = torch.tensor([tag_to_ix[t] for t in tags], dtype=torch.long)
+
+                # Step 3. Run our forward pass.
+                loss = model.neg_log_likelihood(sentence_in, targets)
+
+                # Step 4. Compute the loss, gradients, and update the parameters by
+                # calling optimizer.step()
+                loss.backward()
+                optimizer.step()
 
     # Check predictions after training
     with torch.no_grad():
-        precheck_sent = prepare_sequence(training_data[0][0], word_to_ix)
-        print(model(precheck_sent))
+
+        fildir = os.getcwd()+'/data/chusai_xuanshou copy/'
+        filenames = os.listdir(fildir)
+
+        #print(filenames_txt)
+        charlis = []
+        for filename in filenames:
+            with open(fildir+filename,'r',encoding='utf-8') as f:
+                txtdata = f.read()
+                txtdata = txtdata.replace('\u3000',' ')
+            
+            sentence_loca = []
+            test_data = []
+            #将txt文档分割成句子
+            for i in range(len(txtdata)):
+                if not txtdata[i] == ' ':
+                    if i == 0:
+                        sentence_start = 0
+                    elif txtdata[i-1] == ' ' or txtdata[i-1] == '。':
+                        sentence_start = i
+                    elif txtdata[i] == '。':
+                        sentence_end = i+1
+                        sentence_loca.append([sentence_start,sentence_end])
+                        test_data.append(txtdata[sentence_start:sentence_end])
+                    elif i != len(txtdata)-1 and txtdata[i+1] ==' ':
+                        sentence_end = i+1
+                        sentence_loca.append([sentence_start,sentence_end])
+                        test_data.append(txtdata[sentence_start:sentence_end])
+            #print(test_data)
+            #对每一个句子循环
+            cont = 0
+            for sent_num in range(len(test_data)):
+                precheck_sent = prepare_sequence(test_data[sent_num], word_to_ix)
+                ixtags = model(precheck_sent)[1]
+                print(ixtags)
+                with open(fildir+filename.split('.')[0]+'.ann','a',encoding='utf-8') as f:
+                    for i in range(len(ixtags)):
+                        if not ixtags[i] == 41:
+                            if i == 0:
+                                cont = cont + 1
+                                s = i
+                                lenth = 1
+                            elif ixtags[i-1] == 41:
+                                cont = cont + 1
+                                s = i
+                                lenth = 1
+                            elif i == len(ixtags)-1 :
+                                lenth = lenth + 1
+                                f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
+                                        +str(sentence_loca[sent_num][0]+s)+' '
+                                        +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
+                                        +test_data[sent_num][s:s+lenth]+'\n')
+                            elif ixtags[i+1] == 41:
+                                lenth = lenth + 1
+                                f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
+                                        +str(sentence_loca[sent_num][0]+s)+' '
+                                        +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
+                                        +test_data[sent_num][s:s+lenth]+'\n')
+                            else :
+                                lenth = lenth + 1
+
         # We got it!
