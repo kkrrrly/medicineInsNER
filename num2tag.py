@@ -40,5 +40,18 @@ ix_to_tag = [
         'DRUG_EFFICACY',
         'DRUG_EFFICACY',
         'DRUG_EFFICACY',
-        'O'
+        'O',
+        'DRUG_S',
+        'DRUG_INGREDIENT_S',
+        'DISEASE_S',
+        'SYMPTOM_S',
+        'SYNDROME_S',
+        'DISEASE_GROUP_S',
+        'FOOD_S',
+        'FOOD_GROUP_S',
+        'PERSON_GROUP_S',
+        'DRUG_GROUP_S',
+        'DRUG_DOSAGE_S',
+        'DRUG_TASTE_S',
+        'DRUG_EFFICACY_S'
 ]

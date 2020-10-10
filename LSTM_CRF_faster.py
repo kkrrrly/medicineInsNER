@@ -5,13 +5,19 @@ import ProcessDATA
 import os
 from tag2num import tag_to_ix
 from num2tag import ix_to_tag
+from word_dic import word_to_ix
 
 START_TAG = "<START>"
 STOP_TAG = "<STOP>"
 # torch.manual_seed(1)
 
 def prepare_sequence(seq, to_ix):
-    idxs = [to_ix[w] for w in seq]
+    idxs = []
+    for w in seq:
+        if w not in to_ix:
+            idxs.append(0)
+        else:
+            idxs.append(to_ix[w])
     return torch.tensor(idxs, dtype=torch.long)
 
 class BiLSTM_CRF(nn.Module):
@@ -142,24 +148,35 @@ class BiLSTM_CRF(nn.Module):
 if __name__== '__main__':
     START_TAG = "<START>"
     STOP_TAG = "<STOP>"
-    EMBEDDING_DIM = 30#300
-    HIDDEN_DIM = 26#256
-    train_set_times = 5
-    window_size = 200
+    EMBEDDING_DIM = 300#300
+    HIDDEN_DIM = 256#256
+    train_set_times = 3
+    
 
-    word_to_ix = {}
+    #处理训练数据
+    get_training_data = ProcessDATA.get_train_data()
+    
+    train_set_num = [
+        [0,len(get_training_data)//2],
+        [len(get_training_data)//4,len(get_training_data)//4*3],
+        [len(get_training_data)//2，len(get_training_data)]
+    ]
+    
+    print('traing data',len(get_training_data))
+    #准备字典 字->编号
+    for sentence, tags in get_training_data:
+        for word in sentence:
+            if word not in word_to_ix:
+                word_to_ix[word] = len(word_to_ix)
+        for tag in tags:
+            if tag not in tag_to_ix:
+                tag_to_ix[tag] = len(tag_to_ix)
+    
     # Make up some training data
-    data_generate = ProcessDATA.get_train_data(window_size,train_set_times)
-    for times in range(train_set_times):
+
+    for num in train_set_num:
         print('train_set',times+1)
-        training_data = next(data_generate)
-        for sentence, tags in training_data:
-            for word in sentence:
-                if word not in word_to_ix:
-                    word_to_ix[word] = len(word_to_ix)
-            for tag in tags:
-                if tag not in tag_to_ix:
-                    tag_to_ix[tag] = len(tag_to_ix)
+        training_data = get_training_data[num[0]:num[1]]
 
         model = BiLSTM_CRF(len(word_to_ix), tag_to_ix, EMBEDDING_DIM, HIDDEN_DIM)
         optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)
@@ -169,10 +186,11 @@ if __name__== '__main__':
             precheck_sent = prepare_sequence(training_data[0][0], word_to_ix)
             precheck_tags = torch.tensor([tag_to_ix[t] for t in training_data[0][1]], dtype=torch.long)
             print(model(precheck_sent))
+            print(precheck_tags)
 
         # Make sure prepare_sequence from earlier in the LSTM section is loaded
         for epoch in range(
-                3):  # again, normally you would NOT do 300 epochs, it is toy data
+                10):  # again, normally you would NOT do 300 epochs, it is toy data
             print('epoch',epoch)
             for sentence, tags in training_data:
                 # Step 1. Remember that Pytorch accumulates gradients.
@@ -195,15 +213,16 @@ if __name__== '__main__':
     # Check predictions after training
     with torch.no_grad():
 
-        fildir = os.getcwd()+'/data/chusai_xuanshou copy/'
+        fildir = os.path.join(os.getcwd(),'data','chusai_xuanshou')
         filenames = os.listdir(fildir)
 
         #print(filenames_txt)
-        charlis = []
         for filename in filenames:
-            with open(fildir+filename,'r',encoding='utf-8') as f:
+            name = os.path.splitext(filename)[0]
+            with open(os.path.join(fildir,'{}.txt'.format(name)),'r',encoding='utf-8') as f:
                 txtdata = f.read()
                 txtdata = txtdata.replace('\u3000',' ')
+                print('prediction file ',filename)
             
             sentence_loca = []
             test_data = []
@@ -212,33 +231,46 @@ if __name__== '__main__':
             #对每一个句子循环
             cont = 0
             for sent_num in range(len(test_data)):
-                precheck_sent = prepare_sequence(test_data[sent_num], word_to_ix)
-                ixtags = model(precheck_sent)[1]
+                prediction_sent = prepare_sequence(test_data[sent_num], word_to_ix)
+                ixtags = model(prediction_sent)[1]
                 print(ixtags)
-                with open(fildir+filename.split('.')[0]+'.ann','a',encoding='utf-8') as f:
+                with open(os.path.join(fildir,'{}.ann'.format(name)),'a',encoding='utf-8') as f:
                     for i in range(len(ixtags)):
                         if not ixtags[i] == 41:
-                            if i == 0:
+                            if i == 0:#判定是否开头
                                 cont = cont + 1
                                 s = i
                                 lenth = 1
-                            elif ixtags[i-1] == 41:
-                                cont = cont + 1
-                                s = i
-                                lenth = 1
-                            elif i == len(ixtags)-1 :
-                                lenth = lenth + 1
-                                f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
-                                        +str(sentence_loca[sent_num][0]+s)+' '
-                                        +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
-                                        +test_data[sent_num][s:s+lenth]+'\n')
-                            elif ixtags[i+1] == 41:
-                                lenth = lenth + 1
-                                f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
-                                        +str(sentence_loca[sent_num][0]+s)+' '
-                                        +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
-                                        +test_data[sent_num][s:s+lenth]+'\n')
-                            else :
-                                lenth = lenth + 1
+                                if ixtags[i+1] == 41:#如果是开头的单字则输出
+                                    f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
+                                            +str(sentence_loca[sent_num][0]+s)+' '
+                                            +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
+                                            +test_data[sent_num][s:s+lenth]+'\n')
 
+                            elif i== len(ixtags)-1:#判定是否结尾
+                                if ixtags[i-1] == 41:#如果是结尾的单字需要赋值
+                                    cont = cont + 1
+                                    s = i
+                                    lenth =1
+                                else:
+                                    lenth = lenth +1
+                                
+                                f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
+                                        +str(sentence_loca[sent_num][0]+s)+' '
+                                        +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
+                                        +test_data[sent_num][s:s+lenth]+'\n')
+
+                            else:#中间项
+                                if ixtags[i-1] == 41:
+                                    cont = cont + 1
+                                    s = i
+                                    lenth = 1
+                                else:
+                                    lenth = lenth +1
+
+                                if ixtags[i+1] == 41:
+                                    f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
+                                            +str(sentence_loca[sent_num][0]+s)+' '
+                                            +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
+                                            +test_data[sent_num][s:s+lenth]+'\n')
         # We got it!
