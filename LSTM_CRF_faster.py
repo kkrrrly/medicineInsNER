@@ -159,7 +159,7 @@ if __name__== '__main__':
     train_set_num = [
         [0,len(get_training_data)//2],
         [len(get_training_data)//4,len(get_training_data)//4*3],
-        [len(get_training_data)//2，len(get_training_data)]
+        [len(get_training_data)//2,len(get_training_data)]
     ]
     
     print('traing data',len(get_training_data))
@@ -175,7 +175,7 @@ if __name__== '__main__':
     # Make up some training data
 
     for num in train_set_num:
-        print('train_set',times+1)
+        print('train_set',num)
         training_data = get_training_data[num[0]:num[1]]
 
         model = BiLSTM_CRF(len(word_to_ix), tag_to_ix, EMBEDDING_DIM, HIDDEN_DIM)
@@ -190,7 +190,7 @@ if __name__== '__main__':
 
         # Make sure prepare_sequence from earlier in the LSTM section is loaded
         for epoch in range(
-                10):  # again, normally you would NOT do 300 epochs, it is toy data
+                3):  # again, normally you would NOT do 300 epochs, it is toy data
             print('epoch',epoch)
             for sentence, tags in training_data:
                 # Step 1. Remember that Pytorch accumulates gradients.
