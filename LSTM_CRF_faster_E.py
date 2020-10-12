@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 import ProcessDATA
 import os
-from tag2num import tag_to_ix
-from num2tag import ix_to_tag
+from tag2num_E import tag_to_ix
+from num2tag_E import ix_to_tag
 from word_dic import word_to_ix
 
 START_TAG = "<START>"
@@ -227,9 +227,6 @@ if __name__== '__main__':
             sentence_loca = []
             test_data = []
             test_data,sentence_loca = ProcessDATA.split_txt(txtdata)
-            end_check = [4,7,10,13,16,19,22,25,28,31,34,37,40]
-            begin_check = [2,5,8,11,14,17,20,23,26,29,32,35,38]
-            single_check = [42,43,44,45,46,47,48,49,50,51,52,53,54]
             #print(test_data)
             #对每一个句子循环
             cont = 0
@@ -239,19 +236,19 @@ if __name__== '__main__':
                 print(ixtags)
                 with open(os.path.join(fildir,'{}.ann'.format(name)),'a',encoding='utf-8') as f:
                     for i in range(len(ixtags)):
-                        if not ixtags[i] == 41:
+                        if not ixtags[i] == 29:
                             if i == 0:#判定是否开头
                                 cont = cont + 1
                                 s = i
                                 lenth = 1
-                                if ixtags[i+1] == 41:#如果是开头的单字则输出
+                                if ixtags[i+1] == 29:#如果是开头的单字则输出
                                     f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
                                             +str(sentence_loca[sent_num][0]+s)+' '
                                             +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
                                             +test_data[sent_num][s:s+lenth]+'\n')
 
                             elif i== len(ixtags)-1:#判定是否结尾
-                                if ixtags[i-1] == 41:#如果是结尾的单字需要赋值
+                                if ixtags[i-1] == 29:#如果是结尾的单字需要赋值
                                     cont = cont + 1
                                     s = i
                                     lenth =1
@@ -264,27 +261,16 @@ if __name__== '__main__':
                                         +test_data[sent_num][s:s+lenth]+'\n')
 
                             else:#中间项
-                                if ixtags[i] in end_check:
-                                    lenth += 1
-                                    f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
-                                            +str(sentence_loca[sent_num][0]+s)+' '
-                                            +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
-                                            +test_data[sent_num][s:s+lenth]+'\n')
-                                elif ixtags[i]  in start_check:
+                                if ixtags[i-1] == 41:
                                     cont = cont + 1
                                     s = i
                                     lenth = 1
-                                elif ixtags in single_check:
-                                    cont = cont + 1
-                                    s = i
-                                    lenth = 1
-                                    f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
-                                            +str(sentence_loca[sent_num][0]+s)+' '
-                                            +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
-                                            +test_data[sent_num][s:s+lenth]+'\n')
-
                                 else:
                                     lenth = lenth +1
 
-
+                                if ixtags[i+1] == 41:
+                                    f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
+                                            +str(sentence_loca[sent_num][0]+s)+' '
+                                            +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
+                                            +test_data[sent_num][s:s+lenth]+'\n')
         # We got it!
