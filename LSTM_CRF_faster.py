@@ -148,8 +148,8 @@ class BiLSTM_CRF(nn.Module):
 if __name__== '__main__':
     START_TAG = "<START>"
     STOP_TAG = "<STOP>"
-    EMBEDDING_DIM = 300#300
-    HIDDEN_DIM = 256#256
+    EMBEDDING_DIM = 30#300
+    HIDDEN_DIM = 26#256
     train_set_times = 3
     
 
@@ -190,7 +190,7 @@ if __name__== '__main__':
 
         # Make sure prepare_sequence from earlier in the LSTM section is loaded
         for epoch in range(
-                4):  # again, normally you would NOT do 300 epochs, it is toy data
+                1):  # again, normally you would NOT do 300 epochs, it is toy data
             print('epoch',epoch)
             for sentence, tags in training_data:
                 # Step 1. Remember that Pytorch accumulates gradients.
@@ -227,6 +227,8 @@ if __name__== '__main__':
             sentence_loca = []
             test_data = []
             test_data,sentence_loca = ProcessDATA.split_txt(txtdata)
+            if name == 1429:
+                print(test_data)
             end_check = [4,7,10,13,16,19,22,25,28,31,34,37,40]
             begin_check = [2,5,8,11,14,17,20,23,26,29,32,35,38]
             single_check = [42,43,44,45,46,47,48,49,50,51,52,53,54]
@@ -241,7 +243,7 @@ if __name__== '__main__':
                     for i in range(len(ixtags)):
                         if not ixtags[i] == 41:
 
-                            if ixtags in single_check :#如果是单字则输出
+                            if ixtags[i] in single_check :#如果是单字则输出
                                 cont = cont + 1
                                 s = i
                                 lenth = 1
@@ -252,6 +254,10 @@ if __name__== '__main__':
 
                             else:#中间项
                                 if ixtags[i] in end_check:
+                                    if not i == len(ixtags)-1:
+                                        if ixtags[i+1] in end_check:
+                                            continue
+                                        
                                     lenth += 1
                                     f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
                                             +str(sentence_loca[sent_num][0]+s)+' '
