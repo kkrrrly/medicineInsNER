@@ -190,7 +190,7 @@ if __name__== '__main__':
 
         # Make sure prepare_sequence from earlier in the LSTM section is loaded
         for epoch in range(
-                3):  # again, normally you would NOT do 300 epochs, it is toy data
+                4):  # again, normally you would NOT do 300 epochs, it is toy data
             print('epoch',epoch)
             for sentence, tags in training_data:
                 # Step 1. Remember that Pytorch accumulates gradients.
@@ -240,24 +240,11 @@ if __name__== '__main__':
                 with open(os.path.join(fildir,'{}.ann'.format(name)),'a',encoding='utf-8') as f:
                     for i in range(len(ixtags)):
                         if not ixtags[i] == 41:
-                            if i == 0:#判定是否开头
+
+                            if ixtags in single_check :#如果是单字则输出
                                 cont = cont + 1
                                 s = i
                                 lenth = 1
-                                if ixtags[i+1] == 41:#如果是开头的单字则输出
-                                    f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
-                                            +str(sentence_loca[sent_num][0]+s)+' '
-                                            +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
-                                            +test_data[sent_num][s:s+lenth]+'\n')
-
-                            elif i== len(ixtags)-1:#判定是否结尾
-                                if ixtags[i-1] == 41:#如果是结尾的单字需要赋值
-                                    cont = cont + 1
-                                    s = i
-                                    lenth =1
-                                else:
-                                    lenth = lenth +1
-                                
                                 f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
                                         +str(sentence_loca[sent_num][0]+s)+' '
                                         +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
@@ -270,18 +257,10 @@ if __name__== '__main__':
                                             +str(sentence_loca[sent_num][0]+s)+' '
                                             +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
                                             +test_data[sent_num][s:s+lenth]+'\n')
-                                elif ixtags[i]  in start_check:
+                                elif ixtags[i]  in begin_check:
                                     cont = cont + 1
                                     s = i
                                     lenth = 1
-                                elif ixtags in single_check:
-                                    cont = cont + 1
-                                    s = i
-                                    lenth = 1
-                                    f.write('T'+str(cont)+'\t'+ix_to_tag[ixtags[i]]+' '
-                                            +str(sentence_loca[sent_num][0]+s)+' '
-                                            +str(sentence_loca[sent_num][0]+s+lenth)+'\t'
-                                            +test_data[sent_num][s:s+lenth]+'\n')
 
                                 else:
                                     lenth = lenth +1
